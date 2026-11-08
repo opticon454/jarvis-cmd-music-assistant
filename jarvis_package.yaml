@@ -1,7 +1,7 @@
 name: "music"
 display_name: "Music Assistant"
 description: "Play and control music via Music Assistant. Search and play artists, albums, songs, playlists. Control playback, volume, shuffle, and repeat."
-version: "1.3.0"
+version: "1.3.1"
 min_jarvis_version: "0.9.0"
 license: Apache-2.0
 author:
@@ -19,43 +19,12 @@ packages:
   - name: music-assistant-client
     version: ">=1.3.0"
 
-apt_packages:
-  - shairport-sync
-
-# Declarative post-install ops — applied by the node's sudoers-gated
-# jarvis-post-install wrapper after apt + pip install. Bounded by the
-# Pantry-side allow-list (jarvis-pantry/config/post-install-allowlist.yaml).
-#
-# What these two ops accomplish, together:
-#   1. Switch shairport-sync's output backend to PulseAudio so it writes
-#      to the node's pulse session (same one TTS / spotifyd use).
-#   2. Re-parent the systemd service so it runs as the node's own user
-#      with the right XDG_RUNTIME_DIR + PULSE_RUNTIME_PATH, and depends
-#      on user@<UID>.service so it doesn't start before that session exists.
-# Net effect: music routes through the node's audio stack and follows any
-# paired Bluetooth speaker — same model spotifyd uses.
-post_install:
-  - type: set_config_file_value
-    file: /etc/shairport-sync.conf
-    format: libconfig
-    section: general
-    key: output_backend
-    value: pa
-  - type: configure_systemd_service
-    service: shairport-sync
-    run_as: jarvis_user
-    group: audio
-    environment:
-      XDG_RUNTIME_DIR: "/run/user/${UID}"
-      PULSE_RUNTIME_PATH: "/run/user/${UID}/pulse"
-    wants:
-      - "user@${UID}.service"
-    after:
-      - "user@${UID}.service"
-    restart: on-failure
-    restart_sec: 5
-
 setup_guide: |
+  > **Sendspin variant.** This copy of the package does not install `shairport-sync`, so it needs no apt or
+  > root steps and can be installed on any node. Make the node a Music Assistant player with a Sendspin client
+  > (`sendspin daemon --url ws://<server>:8927/sendspin`), which connects out to the server, so it also works
+  > across VLANs. The AirPlay sections below apply only if you install `shairport-sync` yourself.
+
   ## How this works
 
   This command does not play music directly. Instead, it tells your
